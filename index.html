@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PinPro - Fast & Dark</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root { --bg: #f3f4f6; --card: #ffffff; --text: #111827; }
+        .dark { --bg: #121212; --card: #1e1e1e; --text: #f9fafb; }
+        
+        body { background-color: var(--bg); color: var(--text); transition: 0.3s; font-family: sans-serif; }
+
+        /* Fast Masonry */
+        .masonry-grid { column-count: 2; column-gap: 12px; padding: 12px; }
+        @media (min-width: 768px) { .masonry-grid { column-count: 3; } }
+        @media (min-width: 1024px) { .masonry-grid { column-count: 5; } }
+
+        .img-card { 
+            break-inside: avoid; margin-bottom: 12px; border-radius: 20px; 
+            overflow: hidden; background: var(--card); transition: 0.3s transform; cursor: zoom-in;
+        }
+        .img-card:hover { transform: scale(1.03) translateY(-5px); }
+        .img-card img { opacity: 0; transition: opacity 0.5s ease-in; }
+        .img-loaded { opacity: 1 !important; }
+
+        /* Half-Screen Modal */
+        #modal { display: none; position: fixed; inset: 0; z-index: 1000; }
+        .modal-body { 
+            position: absolute; bottom: 0; left: 0; right: 0; height: 85vh; 
+            background: var(--card); border-radius: 24px 24px 0 0; 
+            display: flex; flex-direction: column; animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .ad-slot { 
+            background: rgba(128,128,128,0.1); border: 2px dashed #888; border-radius: 15px; 
+            margin-top: 15px; min-height: 120px; display: flex; align-items: center; justify-content: center;
+        }
+        
+        .theme-btn { position: fixed; top: 80px; right: 20px; z-index: 100; }
+    </style>
+</head>
+<body>
+
+    <button onclick="toggleTheme()" class="theme-btn p-3 rounded-full bg-white dark:bg-gray-800 shadow-xl border dark:border-gray-700">
+        <i id="theme-icon" data-lucide="moon" class="w-6 h-6 text-gray-800 dark:text-yellow-400"></i>
+    </button>
+
+    <header class="sticky top-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-md p-4">
+        <div class="max-w-6xl mx-auto flex items-center gap-3">
+            <h1 class="text-2xl font-black text-red-600">PIN</h1>
+            <input type="text" id="searchInput" placeholder="Search anything..." 
+                class="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-6 py-3 outline-none focus:ring-2 focus:ring-red-500">
+            <button onclick="newSearch()" class="bg-red-600 text-white p-3 rounded-full"><i data-lucide="search"></i></button>
+        </div>
+    </header>
+
+    <div id="grid" class="masonry-grid max-w-[1600px] mx-auto"></div>
+    <div id="loader" class="text-center py-10"><div class="inline-block w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div></div>
+
+    <div id="modal">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="modal-body">
+            <div class="flex-1 bg-black flex items-center justify-center overflow-hidden">
+                <img id="modalImg" src="" class="max-h-full object-contain">
+            </div>
+            <div class="p-6">
+                <div class="flex gap-4">
+                    <button onclick="closeModal()" class="flex-1 bg-gray-200 dark:bg-gray-700 py-4 rounded-2xl font-bold">Back</button>
+                    <a id="saveBtn" href="#" download target="_blank" class="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold text-center">Save Image</a>
+                </div>
+                <div class="ad-slot">
+                    <div class="text-center text-xs text-gray-400">MONETAG NATIVE AD CODE HERE</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '54435632-24ec12c82876f1446b2cb03fe';
+        let page = 1;
+        let query = 'trending';
+        let isFetching = false;
+
+        async function fetchImages(isNew = false) {
+            if (isFetching) return;
+            isFetching = true;
+            if (isNew) { page = 1; document.getElementById('grid').innerHTML = ''; }
+            
+            try {
+                const res = await fetch(`https://pixabay.com/api/?key=${API_KEY}&q=${encodeURIComponent(query)}&image_type=photo&per_page=30&page=${page}`);
+                const data = await res.json();
+                render(data.hits);
+                page++;
+            } finally { isFetching = false; }
+        }
+
+        function render(images) {
+            const grid = document.getElementById('grid');
+            images.forEach(img => {
+                const card = document.createElement('div');
+                card.className = 'img-card';
+                card.onclick = () => openModal(img.largeImageURL);
+                card.innerHTML = `<img src="${img.webformatURL}" class="w-full h-auto" onload="this.classList.add('img-loaded')">`;
+                grid.appendChild(card);
+            });
+        }
+
+        function newSearch() {
+            query = document.getElementById('searchInput').value || 'trending';
+            fetchImages(true);
+        }
+
+        function openModal(url) {
+            document.getElementById('modalImg').src = url;
+            document.getElementById('saveBtn').href = url;
+            document.getElementById('modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const icon = document.getElementById('theme-icon');
+            const isDark = document.body.classList.contains('dark');
+            icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+            lucide.createIcons();
+        }
+
+        // Infinite Scroll
+        window.onscroll = () => {
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 1000) fetchImages();
+        };
+
+        document.getElementById('searchInput').onkeypress = (e) => { if(e.key === 'Enter') newSearch(); };
+
+        lucide.createIcons();
+        fetchImages();
+    </script>
+</body>
+</html>
